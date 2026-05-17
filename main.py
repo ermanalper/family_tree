@@ -35,9 +35,10 @@ class Person:
             mother.children[full_name] = self
 
     def set_marriage(self, spouse:Person):
-        if is_valid_marriage(self, spouse):
-            self._married_to = spouse
-            spouse._married_to = self
+        self._married_to = spouse
+        spouse._married_to = self
+        print(f'success: {self.name} {self.name} and {spouse.name} {spouse.surname} are married')
+
     def add_child(self, child:Person):
         child_fullname = child._name + ' ' + child._surname
         if child_fullname not in self._children:
@@ -49,7 +50,7 @@ class Person:
         if death is not None: self._death = death
     def dump_person_info(self):
         print(f'Name and Surname: {self._name} {self._surname}')
-        if self._death != -1:
+        if self._death == -1:
             print('Age: ', (CURRENT_YEAR - self._birth))
         else:
             print('Age of Death: ', (self._death - self._birth))
@@ -112,7 +113,42 @@ class Person:
 
 
 def is_valid_marriage(spouse1:Person, spouse2:Person) -> bool:
+    if spouse1 is None or spouse2 is None: return False
+    if spouse1.married_to is not None or spouse2.married_to is not None:
+        print('At least one of the spouses is already married')
+        return False
+    if spouse1.gender is spouse2.gender:
+        print('Spouses cannot be the same gender')
+        return False
+    if CURRENT_YEAR - spouse1.birth < 18 or CURRENT_YEAR - spouse2.birth < 18:
+        print('Spouses cannot old enough')
+        return False
+    if spouse1.gender is Gender.MALE:
+        husband = spouse1
+        wife = spouse2
+    else:
+        husband = spouse2
+        wife = spouse1
+    if _is_father(wife, husband):
+        print('A woman cannot marry her father')
+        return False
+    if _is_mother(husband, wife):
+        print('A man cannot marry her mother')
+        return False
+    if _is_sibling(husband, wife):
+        print('Siblings cannot marry')
+        return False
+    if _is_uncle_father(wife, husband) or _is_uncle_mother(wife, husband):
+        print('A woman cannot marry her uncle')
+        return False
+    if _is_aunt_father(husband, wife) or _is_aunt_mother(husband, wife):
+        print('A man cannot marry his aunt')
+        return False
+    if _is_grandchild(husband, wife) or _is_grandchild(wife, husband):
+        print('A person cannot marry their grandparent')
+        return False
     return True
+
 
 def _get_name_surname_input() -> (str, str):
     while True:
@@ -181,9 +217,8 @@ def _is_daughter(person1:Person, person2:Person) -> bool:
 
 def _is_sibling(person1:Person, person2:Person) -> bool:
     if person1 is None or person2 is None: return False
-    mother = person1.mother
-    if mother is None: return False
-    return _is_child(mother, person2)
+    key = person2.name + ' ' + person2.surname
+    return key in person1.siblings
 
 def _is_brother(person1:Person, person2:Person) -> bool:
     if person1 is None or person2 is None or person2.gender is not Gender.MALE: return False
@@ -349,7 +384,7 @@ def _is_brother_in_law_wifes_sisters_husband(person1: Person, person2: Person) -
 
 def _is_sister_in_law_wifes_sister(person1:Person, person2:Person) -> bool:
     # BALDIZ
-    if person1 is None or person2 is None or person2.gender is not Gender.FEMALE: return False
+    if person1 is None or person1.gender is not Gender.MALE or person2 is None or person2.gender is not Gender.FEMALE: return False
     spouse = person1.married_to
     if spouse is None: return False
     key = person2.name + ' ' + person2.surname
@@ -384,11 +419,12 @@ def _add_root_marriage():
         name, surname = _get_name_surname_input()
         full_name = name + ' ' + surname
         birth = _get_birth_year_input()
+        death = _get_death_year_input()
         if full_name in all_people: #so root mother and root father cannot have the same names
             all_people.clear()
             print('Father and mother cannot have the same names.')
             return
-        root_father_or_mother = Person(gender, name, surname, birth)
+        root_father_or_mother = Person(gender, name, surname, birth, death)
         root.append(root_father_or_mother)
         print('')
     if is_valid_marriage(root[0], root[1]):
@@ -452,13 +488,56 @@ def add_person():
     if mother.death != -1 and birth > mother.death:
         print(f'Error: Mother ({mother.name} {mother.surname}) died before the birth of the child.')
         return
+    if birth - father.birth < 18 or birth - mother.birth < 18:
+        print('Error: Non-realistic birth date. Parents must be at least 18 years old.')
+        return
     death = _get_death_year_input()
     gender = _get_gender_input()
     Person(gender, new_child_name, new_child_surname, birth, death, father, mother)
 
 def find_relation():
-    pass
+    name1 = input("1. Please type name and surname of the first person: ").strip()
+    name2 = input("2. Please type name and surname of the second person: ").strip()
 
+    if name1 not in all_people or name2 not in all_people:
+        print('Person not found')
+        return
+
+    p1 = all_people[name1]
+    p2 = all_people[name2]
+
+    if _is_mother(p2, p1): rel = "Anne"
+    elif _is_father(p2, p1): rel = "Baba"
+    elif _is_son(p2, p1): rel = "Ogul"
+    elif _is_daughter(p2, p1): rel = "Kiz"
+    elif _is_big_brother(p2, p1): rel = "Abi"
+    elif _is_little_brother(p2, p1): rel = "Erkek Kardes"
+    elif _is_big_sister(p2, p1): rel = "Abla"
+    elif _is_little_sister(p2, p1): rel = "Kiz Kardes"
+    elif _is_grandmother(p2, p1): rel = "Buyukanne"
+    elif _is_grandfather(p2, p1): rel = "Buyukbaba"
+    elif _is_grandchild(p2, p1): rel = "Torun"
+    elif _is_uncle_father(p2, p1): rel = "Amca"
+    elif _is_uncle_mother(p2, p1): rel = "Dayi"
+    elif _is_aunt_father(p2, p1): rel = "Hala"
+    elif _is_aunt_mother(p2, p1): rel = "Teyze"
+    elif _is_nephew_or_niece(p2, p1): rel = "Yegen"
+    elif _is_cousin(p2, p1): rel = "Kuzen"
+    elif _is_brother_in_law_sisters_husband(p2, p1): rel = "Eniste"
+    elif _is_sister_in_law_brothers_wife(p2, p1): rel = "Yenge"
+    elif _is_mother_in_law(p2, p1): rel = "Kayinvalide"
+    elif _is_father_in_law(p2, p1): rel = "Kayinpeder"
+    elif _is_daughter_in_law(p2, p1): rel = "Gelin"
+    elif _is_son_in_law(p2, p1): rel = "Damat"
+    elif _is_brother_in_law_wifes_sisters_husband(p2, p1): rel = "Bacanak"
+    elif _is_sister_in_law_wifes_sister(p2, p1): rel = "Baldiz"
+    elif _is_sister_in_law_husbands_brothers_wife(p2, p1): rel = "Elti"
+    elif _is_brother_in_law_spouses_brother(p2, p1): rel = "Kayinbirader"
+    else:
+        print("No Kinship Relationship")
+        return
+
+    print(f"> {rel}")
 
 def get_person_info():
     name, surname = _get_name_surname_input()
@@ -503,7 +582,41 @@ def print_family_tree():
 
 
 def add_marriage():
-    pass
+    s1_name, s1_surname = _get_name_surname_input()
+    s1_key = s1_name + ' ' + s1_surname
+    s2_name, s2_surname = _get_name_surname_input()
+    s2_key = s2_name + ' ' + s2_surname
+    if s1_key not in all_people and s2_key not in all_people:
+        print('Neither spouse is in the family tree')
+        return
+    s1:Person
+    s2:Person
+    newly_added_person = None
+    if s1_key not in all_people:
+        print(s1_key, ' is not found in the family tree. Adding new spouse')
+        birth = _get_birth_year_input()
+        death = _get_death_year_input()
+        gender = _get_gender_input()
+        s1 = Person(gender, s1_name, s1_surname, birth, death)
+        s2 = all_people[s2_key]
+        newly_added_person = s1
+    elif s2_key not in all_people:
+        print(s2_key, ' is not found in the family tree. Adding new spouse')
+        birth = _get_birth_year_input()
+        death = _get_death_year_input()
+        gender = _get_gender_input()
+        s2 = Person(gender, s2_name, s2_surname, birth, death)
+        s1 = all_people[s1_key]
+        newly_added_person = s2
+    else:
+        s1 = all_people[s1_key]
+        s2 = all_people[s2_key]
+
+    if is_valid_marriage(s1, s2):
+        s1.set_marriage(s2)
+    elif newly_added_person is not None:
+        key = newly_added_person.name + ' ' + newly_added_person.surname
+        del all_people[key]
 
 
 
