@@ -37,7 +37,7 @@ class Person:
     def set_marriage(self, spouse:Person):
         self._married_to = spouse
         spouse._married_to = self
-        print(f'success: {self.name} {self.name} and {spouse.name} {spouse.surname} are married')
+        print(f'success: {self.name} {self.surname} and {spouse.name} {spouse.surname} are married')
 
     def add_child(self, child:Person):
         child_fullname = child._name + ' ' + child._surname
@@ -110,6 +110,12 @@ class Person:
             for fullname, child in self.mother.children.items()
             if child is not self
         }
+    @birth.setter
+    def birth(self, year):
+        self._birth = year
+    @death.setter
+    def death(self, year):
+        self._death = year
 
 
 def is_valid_marriage(spouse1:Person, spouse2:Person) -> bool:
@@ -150,12 +156,12 @@ def is_valid_marriage(spouse1:Person, spouse2:Person) -> bool:
     return True
 
 
-def _get_name_surname_input() -> (str, str):
+def _get_name_surname_input(prompt_text="Enter Name and Surname: ") -> (str, str):
     while True:
-        full_name = input("Enter Name and Surname: ")
+        full_name = input(prompt_text)
         parts = full_name.strip().split()
         if len(parts) >= 2:
-            break  # guaranteed name-surname
+            break
         print('Please enter name and surname.')
     return " ".join(parts[:-1]), parts[-1]
 
@@ -582,9 +588,9 @@ def print_family_tree():
 
 
 def add_marriage():
-    s1_name, s1_surname = _get_name_surname_input()
+    s1_name, s1_surname = _get_name_surname_input('Enter Name and Surname of the first person: ')
     s1_key = s1_name + ' ' + s1_surname
-    s2_name, s2_surname = _get_name_surname_input()
+    s2_name, s2_surname = _get_name_surname_input('Enter Name and Surname of the second person: ')
     s2_key = s2_name + ' ' + s2_surname
     if s1_key not in all_people and s2_key not in all_people:
         print('Neither spouse is in the family tree')
@@ -619,6 +625,37 @@ def add_marriage():
         del all_people[key]
 
 
+def update_person():
+    while True:
+        choice = input("1-Update Birth Year / 2-Update Death Year / 0-Cancel: ")
+        if choice == '0':
+            return
+        elif choice in ['1', '2']:
+            break
+        else:
+            print("Invalid choice.")
+
+    name, surname = _get_name_surname_input("Enter Name and Surname of the person: ")
+    key = name + ' ' + surname
+    if key not in all_people:
+        print(f"'{key}' is not found.")
+        return
+
+    person = all_people[key]
+
+    if choice == '1':
+        birth = _get_birth_year_input()
+        person.birth = birth
+        print(f"{key} Year of birth updated.")
+    elif choice == '2':
+        death = _get_death_year_input()
+        person.death = death
+        print(f"{key} Year of death updated.")
+
+
+
+
+
 
 if __name__ == '__main__':
     flag = True
@@ -628,7 +665,18 @@ if __name__ == '__main__':
             case 1:
                 find_relation()
             case 2:
-                add_person()
+                flag2 = True
+                while flag2:
+                    flag2 = False
+                    print('1-) Add Person | 2-) Update Person')
+                    choice = input('Please choose an operation: ')
+                    if choice == '1':
+                        add_person()
+                    elif choice == '2':
+                        update_person()
+                    else:
+                        flag2 = True
+                        
             case 3:
                 get_person_info()
             case 4:
