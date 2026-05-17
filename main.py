@@ -99,6 +99,18 @@ class Person:
     def level(self):
         return self._level
 
+    @property
+    def siblings(self):
+        if self.mother is None:
+            return {}
+        # exclude self
+        return {
+            fullname: child
+            for fullname, child in self.mother.children.items()
+            if child is not self
+        }
+
+
 def is_valid_marriage(spouse1:Person, spouse2:Person) -> bool:
     return True
 
@@ -138,6 +150,226 @@ def _get_gender_input() -> Gender:
         elif gender_input == 'f':
             return Gender.FEMALE
         print('Please enter (m)ale or (f)emale')
+
+# For the following kinship functions, the kinship relations are calculated from the person1's perspective
+# e.g. _is_uncle(person1, person2) returns true if person2 is person1's uncle
+# e.g. _is_child(person1, person2) returns true if person1 is person2's mother or father
+# e.g. _is_mother(person1, person2) returns true if person2 is person1's mother
+# e.g. _is_big_brother(person1, person2) returns true if person2 is person1's brother and person2 is older
+def _is_mother(person1:Person, person2:Person) -> bool:
+    if person1 is None or person2 is None: return False
+    return person1.mother is person2
+
+def _is_father(person1:Person, person2:Person) -> bool:
+    if person1 is None or person2 is None: return False
+    return person1.father is person2
+
+def _is_child(person1:Person, person2:Person) -> bool:
+    if person1 is None or person2 is None: return False
+    children = person1.children
+    if children is None: return False
+    key = person2.name + ' ' + person2.surname
+    return key in children
+
+def _is_son(person1:Person, person2:Person) -> bool:
+    if person1 is None or person2 is None or person2.gender is not Gender.MALE: return False
+    return _is_child(person1, person2)
+
+def _is_daughter(person1:Person, person2:Person) -> bool:
+    if person1 is None or person2 is None or person2.gender is not Gender.FEMALE: return False
+    return _is_child(person1, person2)
+
+def _is_sibling(person1:Person, person2:Person) -> bool:
+    if person1 is None or person2 is None: return False
+    mother = person1.mother
+    if mother is None: return False
+    return _is_child(mother, person2)
+
+def _is_brother(person1:Person, person2:Person) -> bool:
+    if person1 is None or person2 is None or person2.gender is not Gender.MALE: return False
+    return _is_sibling(person1, person2)
+
+def _is_sister(person1:Person, person2:Person) -> bool:
+    if person1 is None or person2 is None or person2.gender is not Gender.FEMALE: return False
+    return _is_sibling(person1, person2)
+
+def _is_big_brother(person1:Person, person2:Person) -> bool:
+    if not _is_brother(person1, person2): return False
+    return person2.birth < person1.birth
+
+def _is_little_brother(person1:Person, person2:Person) -> bool:
+    if not _is_brother(person1, person2): return False
+    return person2.birth > person1.birth
+
+def _is_big_sister(person1:Person, person2:Person) -> bool:
+    if not _is_sister(person1, person2): return False
+    return person2.birth < person1.birth
+
+def _is_little_sister(person1:Person, person2:Person) -> bool:
+    if not _is_sister(person1, person2): return False
+    return person2.birth > person1.birth
+
+def _is_grandmother(person1:Person, person2:Person) -> bool:
+    if person1 is None or person2 is None: return False
+    mother = person1.mother
+    if mother is not None:
+        grandmother = mother.mother
+        if grandmother is not None and person2 is grandmother:
+            return True
+    father = person1.father
+    if father is not None:
+        grandmother = father.mother
+        if grandmother is not None and person2 is grandmother:
+            return True
+    return False
+
+def _is_grandfather(person1:Person, person2:Person) -> bool:
+    if person1 is None or person2 is None: return False
+    mother = person1.mother
+    if mother is not None:
+        grandfather = mother.father
+        if grandfather is not None and person2 is grandfather:
+            return True
+    father = person1.father
+    if father is not None:
+        grandfather = father.father
+        if grandfather is not None and person2 is grandfather:
+            return True
+    return False
+
+def _is_grandchild(person1:Person, person2:Person) -> bool:
+    return _is_grandmother(person2, person1) or _is_grandfather(person2, person1)
+
+def _is_uncle_father(person1:Person, person2:Person) -> bool:
+    # AMCA
+    if person1 is None or person2 is None or person2.gender is not Gender.MALE: return False
+    father = person1.father
+    if father is None: return False
+    fathers_siblings = father.siblings
+    uncle_key = person2.name + ' ' + person2.surname
+    return uncle_key in fathers_siblings
+
+def _is_uncle_mother(person1:Person, person2:Person) -> bool:
+    # DAYI
+    if person1 is None or person2 is None or person2.gender is not Gender.MALE: return False
+    mother = person1.mother
+    if mother is None: return False
+    mothers_siblings = mother.siblings
+    uncle_key = person2.name + ' ' + person2.surname
+    return uncle_key in mothers_siblings
+
+def _is_aunt_father(person1:Person, person2:Person) -> bool:
+    # HALA
+    if person1 is None or person2 is None or person2.gender is not Gender.FEMALE: return False
+    father = person1.father
+    if father is None: return False
+    fathers_siblings = father.siblings
+    aunt_key = person2.name + ' ' + person2.surname
+    return aunt_key in fathers_siblings
+
+def _is_aunt_mother(person1:Person, person2:Person) -> bool:
+    # TEYZE
+    if person1 is None or person2 is None or person2.gender is not Gender.FEMALE: return False
+    mother = person1.mother
+    if mother is None: return False
+    mothers_siblings = mother.siblings
+    aunt_key = person2.name + ' ' + person2.surname
+    return aunt_key in mothers_siblings
+
+def _is_nephew_or_niece(person1:Person, person2:Person) -> bool:
+    if person1 is None or person2 is None: return False
+    siblings = person1.siblings
+    key = person2.name + ' ' + person2.surname
+    for fullname, person_ptr in siblings.items():
+        nephews_and_nieces = person_ptr.children
+        if key in nephews_and_nieces: return True
+    return False
+
+def _is_cousin(person1:Person, person2:Person) -> bool:
+    if person1 is None or person2 is None: return False
+    father = person1.father
+    key = person2.name + ' ' + person2.surname
+    if father is not None:
+        fathers_siblings = father.siblings
+        for _, fathers_siblings_ptr in fathers_siblings.items():
+            cousins = fathers_siblings_ptr.children
+            if key in cousins: return True
+    mother = person1.mother
+    if mother is not None:
+        mothers_siblings = mother.siblings
+        for _, mothers_siblings_ptr in mothers_siblings.items():
+            cousins = mothers_siblings_ptr.children
+            if key in cousins: return True
+    return False
+
+def _is_sibling_in_law(person1:Person, person2:Person) -> bool:
+    if person1 is None or person2 is None: return False
+    spouse = person1.married_to
+    if spouse is None: return False
+    key = person2.name + ' ' + person2.surname
+    return key in spouse.siblings
+
+def _is_brother_in_law_sisters_husband(person1:Person, person2:Person) -> bool:
+    # ENİŞTE
+    return _is_sibling_in_law(person2, person1) and person2.gender is Gender.MALE
+
+def _is_sister_in_law_brothers_wife(person1:Person, person2:Person) -> bool:
+    # YENGE
+    return _is_sibling_in_law(person2, person1) and person2.gender is Gender.FEMALE
+
+def _is_mother_in_law(person1:Person, person2:Person) -> bool:
+    if person1 is None or person2 is None: return False
+    spouse = person1.married_to
+    if spouse is None: return False
+    mother_in_law = spouse.mother
+    return mother_in_law is person2
+
+def _is_father_in_law(person1:Person, person2:Person) -> bool:
+    if person1 is None or person2 is None: return False
+    spouse = person1.married_to
+    if spouse is None: return False
+    father_in_law = spouse.father
+    return father_in_law is person2
+
+def _is_daughter_in_law(person1:Person, person2:Person) -> bool:
+    return (_is_mother_in_law(person2, person1) or _is_father_in_law(person2, person1)) and person2.gender is Gender.FEMALE
+
+def _is_son_in_law(person1:Person, person2:Person) -> bool:
+    return (_is_mother_in_law(person2, person1) or _is_father_in_law(person2, person1)) and person2.gender is Gender.MALE
+
+
+def _is_brother_in_law_wifes_sisters_husband(person1: Person, person2: Person) -> bool:
+    # BACANAK
+    if person1 is None or person1.gender is not Gender.MALE or person2 is None or person2.gender is not Gender.MALE: return False
+    wife1 = person1.married_to
+    wife2 = person2.married_to
+    if wife1 is None or wife2 is None: return False
+    wife2_key = wife2.name + ' ' + wife2.surname
+    return wife2_key in wife1.siblings
+
+def _is_sister_in_law_wifes_sister(person1:Person, person2:Person) -> bool:
+    # BALDIZ
+    if person1 is None or person2 is None or person2.gender is not Gender.FEMALE: return False
+    spouse = person1.married_to
+    if spouse is None: return False
+    key = person2.name + ' ' + person2.surname
+    return key in spouse.siblings
+
+def _is_sister_in_law_husbands_brothers_wife(person1:Person, person2:Person) -> bool:
+    # ELTİ
+    if person1 is None or person1.gender is not Gender.FEMALE or person2 is None or person2.gender is not Gender.FEMALE: return False
+    husband1, husband2 = person1.married_to, person2.married_to
+    if husband1 is None or husband2 is None: return False
+    h1_key = husband1.name + ' ' + husband1.surname
+    return h1_key in husband2.siblings
+
+def _is_brother_in_law_spouses_brother(person1:Person, person2:Person) -> bool:
+    # KAYINBİRADER
+    if person1 is None or person2 is None or person2.gender is not Gender.MALE: return False
+    spouse = person1.married_to
+    if spouse is None: return False
+    key = person2.name + ' ' + person2.surname
+    return key in spouse.siblings
 
 
 def _add_root_marriage():
@@ -272,6 +504,7 @@ def print_family_tree():
 
 def add_marriage():
     pass
+
 
 
 if __name__ == '__main__':
