@@ -411,6 +411,9 @@ def _is_brother_in_law_spouses_brother(person1:Person, person2:Person) -> bool:
     if spouse is None: return False
     key = person2.name + ' ' + person2.surname
     return key in spouse.siblings
+def _is_spouse(person1:Person, person2:Person) -> bool:
+    if person1 is None or person2 is None: return False
+    return person2 is person1.married_to
 
 
 def _add_root_marriage():
@@ -529,6 +532,7 @@ def find_relation():
     elif _is_aunt_mother(p2, p1): rel = "Teyze"
     elif _is_nephew_or_niece(p2, p1): rel = "Yegen"
     elif _is_cousin(p2, p1): rel = "Kuzen"
+    elif _is_spouse(p2, p1): rel = "Es"
     elif _is_brother_in_law_sisters_husband(p2, p1): rel = "Eniste"
     elif _is_sister_in_law_brothers_wife(p2, p1): rel = "Yenge"
     elif _is_mother_in_law(p2, p1): rel = "Kayinvalide"
